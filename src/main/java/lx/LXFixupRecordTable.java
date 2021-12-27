@@ -81,7 +81,6 @@ public class LXFixupRecordTable {
 		 */
     	switch (getSourceType()) {
     	case 0x02:
-    	case 0x03:
     	case 0x05:
     	case 0x06:
     	case 0x07:
@@ -163,6 +162,10 @@ public class LXFixupRecordTable {
     
     public int getSourceType() {
     	return src & 0xF;
+    }
+
+    public int getTargetType() {
+    	return flags & 0x3;
     }
     
     public int getDSTOffsetCount() {
