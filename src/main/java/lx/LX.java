@@ -210,6 +210,9 @@ public class LX {
 				}
 
 				switch (frt.getSourceType()) {
+				case 0x03: /* 16:16 Pointer fixup (32-bits). */
+					emitU32(data, frt.getDSTOffset(i), ((memAddr >> 4) << 16) | (memAddr & 0xf));
+					break;
 				case 0x05: /* 16-bit */
 					emitU16(data, frt.getDSTOffset(i), memAddr);
 					break;

@@ -24,11 +24,14 @@ public class LXFixupRecordTable {
 	/*
 	 *         +-----+-----+-----+-----+
 	 *     00h | SRC |FLAGS|SRCOFF/CNT*|
-	 *	   +-----+-----+-----+-----+-----+-----+
+	 *	       +-----+-----+-----+-----+-----+-----+
 	 * 03h/04h |           TARGET DATA *           |
 	 *         +-----+-----+-----+-----+-----+-----+
 	 *         | SRCOFF1 @ |   . . .   | SRCOFFn @ |
 	 *         +-----+-----+----   ----+-----+-----+
+	 *
+     *   * These fields are variable size.
+     *   @ These fields are optional.
 	 */
 
 	public byte src;
@@ -38,29 +41,47 @@ public class LXFixupRecordTable {
 	public long trgoff;
 
 	/* My private one.*/
-	private long size = 4;
+	private long size = 2;
 	private int dstOffset[];
 
     public LXFixupRecordTable(BinaryReader reader, long offsetBase) throws IOException {
-	src = reader.readNextByte();
-	flags = reader.readNextByte();
-	srcoff = reader.readNextUnsignedShort();
+        src = reader.readNextByte();
+        flags = reader.readNextByte();
+
+        /*
+    	 * [Doc]
+         * 20h = When  the  'Source  List'  Flag is set,  the
+         * SRCOFF field  is compressed  to  a byte.
+         */
+        if ((src & 0x20) == 0x20) {
+            srcoff = reader.readNextByte();
+            size += 1;
+        } else {
+            srcoff = reader.readNextUnsignedShort();
+            size += 2;
+        }
     	
-    	/* 
+    	/*
     	 * Source type.
     	 * Supporting:
+         * 03h = 16:16 Pointer fixup (32-bits).
     	 * 05h = 16-bit Offset fixup (16-bits).
     	 * 06h = 16:32 Pointer fixup (48-bits).
          * 07h = 32-bit Offset fixup (32-bits).
          * 08h = 32-bit Self-relative offset fixup
-         * 20h = Source List Flag.
          * 
          * XXX:
          * 02h = 16-bit Selector fixup (16-bits).
          * 10h = Fixup to Alias Flag.
+         *
+         * Unsupported:
+         * 00h = Byte fixup (8-bits).
+         * 01h = (undefined).
+         * 04h = (undefined).
 		 */
     	switch (getSourceType()) {
     	case 0x02:
+    	case 0x03:
     	case 0x05:
     	case 0x06:
     	case 0x07:
@@ -115,7 +136,15 @@ public class LXFixupRecordTable {
         	trgoff = reader.readNextUnsignedShort();
         	size += 2;
         }
-        
+
+        /*
+    	 * [Doc]
+         * 20h = When  the  'Source  List'  Flag is set,  the
+         * SRCOFF field contains the number of source offsets, and a
+         * list  of source  offsets  follows the end of
+         * fixup  record (after  the  optional additive
+         * value).
+         */
         if ((src & 0x20) == 0x20) {
             this.dstOffset = new int[srcoff];
             for (int i = 0; i < srcoff; i++) {
